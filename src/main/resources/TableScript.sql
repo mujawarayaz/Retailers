@@ -20,3 +20,7 @@ CREATE TABLE Transactions (
     CONSTRAINT fk_retailer FOREIGN KEY (retailer_id) REFERENCES Retailer(retailer_id) ON DELETE CASCADE
 );
 
+INSERT INTO Retailer (name, reward_point) VALUES ('Test Retailer', 0);
+INSERT INTO Retailer (name, reward_point) VALUES ('Second Retailer', 0);
+
+
