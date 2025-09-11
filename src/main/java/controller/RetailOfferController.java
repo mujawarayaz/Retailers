@@ -1,4 +1,4 @@
-package com.retailoffer.api;
+package controller;
 
 
 import com.retailoffer.dto.RetailerDTO;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/retail")
-public class RetailOfferAPI {
+public class RetailOfferController {
 
     @Autowired
     private RetailService retailService;

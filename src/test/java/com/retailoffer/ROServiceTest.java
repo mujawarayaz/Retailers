@@ -31,7 +31,7 @@ import com.retailoffer.service.RetailServiceImpl;
 
 
 @SpringBootTest
-public class RetailofferApplicationTests {
+public class ROServiceTest {
 
     @Mock
     private RetailerRepository retailerRepository;
