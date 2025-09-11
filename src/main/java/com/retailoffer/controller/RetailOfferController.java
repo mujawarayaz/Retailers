@@ -1,10 +1,6 @@
-package controller;
+package com.retailoffer.controller;
 
 
-import com.retailoffer.dto.RetailerDTO;
-import com.retailoffer.dto.TransactionDTO;
-import com.retailoffer.exception.RetailerException;
-import com.retailoffer.service.RetailService;
 
 import jakarta.validation.Valid;
 
@@ -16,6 +12,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.retailoffer.dto.RetailerDTO;
+import com.retailoffer.dto.TransactionDTO;
+import com.retailoffer.exception.RetailerException;
+import com.retailoffer.service.RetailService;
+
 @RestController
 @RequestMapping("/retail")
 public class RetailOfferController {
@@ -23,9 +24,6 @@ public class RetailOfferController {
     @Autowired
     private RetailService retailService;
 
-    /**
-     * Record a transaction and update reward points.
-     */
     @PostMapping("/transaction")
     public ResponseEntity<RetailerDTO> recordTransaction(
             @Valid @RequestBody TransactionDTO transactionDTO) throws RetailerException {
