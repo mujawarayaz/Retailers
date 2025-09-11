@@ -24,3 +24,12 @@ INSERT INTO Retailer (name, reward_point) VALUES ('Test Retailer', 0);
 INSERT INTO Retailer (name, reward_point) VALUES ('Second Retailer', 0);
 
 
+
+
+
+INSERT INTO Transactions (retailer_id, amount_spent, transaction_date)
+VALUES (1, 120.00, '2025-08-01'),
+       (1, 90.00, '2025-07-10'),
+       (2, 150.00, '2025-06-05');
+
+
