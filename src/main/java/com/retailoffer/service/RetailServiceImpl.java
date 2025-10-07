@@ -1,16 +1,14 @@
 package com.retailoffer.service;
 
-
 import java.time.LocalDate;
-import java.time.Month;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-//import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 
 import com.retailoffer.dto.RetailerDTO;
@@ -24,158 +22,137 @@ import com.retailoffer.repository.TransactionRepository;
 @Service
 public class RetailServiceImpl implements RetailService {
 
-    @Autowired
-    private RetailerRepository retailerRepository;
 
-    @Autowired
-    private TransactionRepository transactionRepository;
-    
-//   ModelMapper modelMapper = new ModelMapper();
+	private record MonthlyRetailerData(Integer retailerId, Retailer retailer, String monthKey, Integer points,
+			Transaction transaction) {
+	}
 
-    @Override
-    public RetailerDTO recordTransaction(TransactionDTO transactionDTO) throws RetailerException{
-       
-        Retailer retailer = retailerRepository.findById(transactionDTO.getRetailerId())
-                .orElseThrow(() -> new RetailerException("retailer.not.found"));
+	private final RetailerRepository retailerRepository;
+	private final TransactionRepository transactionRepository;
+	private final ModelMapper modelMapper;
+	private final TransactionValidator transactionValidator;
+	private final RewardCalculatorService rewardCalculatorService;
 
-        
-        int earnedPoints = calculateRewardPoints(transactionDTO.getAmountSpent());
+	public RetailServiceImpl(RetailerRepository retailerRepository, TransactionRepository transactionRepository,
+			ModelMapper modelMapper, TransactionValidator transactionValidator,
+			RewardCalculatorService rewardCalculatorService) {
+		this.retailerRepository = retailerRepository;
+		this.transactionRepository = transactionRepository;
+		this.modelMapper = modelMapper;
+		this.transactionValidator = transactionValidator;
+		this.rewardCalculatorService = rewardCalculatorService;
+	}
 
-      
-        retailer.setRewardPoint(retailer.getRewardPoint() + earnedPoints);
+	@Override
+	public RetailerDTO recordTransaction(TransactionDTO transactionDTO) throws RetailerException {
+		transactionValidator.validate(transactionDTO);
 
-        // Save updated retailer
-        Retailer updatedRetailer = retailerRepository.save(retailer);
+		Retailer retailer = retailerRepository.findById(transactionDTO.getRetailerId())
+				.orElseThrow(() -> new RetailerException("retailer.not.found"));
 
-        // Create and save transaction
-        Transaction transaction = new Transaction();
-        transaction.setRetailer(retailer);
-        transaction.setAmountSpent(transactionDTO.getAmountSpent());
-        transaction.setTransactionDate(
-        transactionDTO.getTransactionDate());
-        transactionRepository.save(transaction);
+		int earnedPoints = rewardCalculatorService.calculateRewardPoints(transactionDTO.getAmountSpent());
 
-        // Return updated RetailerDT
-        RetailerDTO dto = 
-//        modelMapper.map(updatedRetailer , RetailerDTO.class);
-         new RetailerDTO();
-        dto.setRetailerId(updatedRetailer.getRetailerId());
-        dto.setName(updatedRetailer.getName());
-        dto.setRewardPoint(updatedRetailer.getRewardPoint());
-        
-        
-        return dto;
-    }
+		retailer.setRewardPoint(retailer.getRewardPoint() + earnedPoints);
 
-    // Helper function to calculate reward point.
-    public Integer calculateRewardPoints(Double amountSpent) {
-        int points = 0;
-        if (amountSpent > 100) {
-            points += 2 * (amountSpent.intValue() - 100);
-            points += 1 * 50; // For $50–$100
-        } else if (amountSpent > 50) {
-            points += 1 * (amountSpent.intValue() - 50);
-        }
-        return points;
-    }
+		Retailer updatedRetailer = retailerRepository.save(retailer);
+
+		Transaction transaction = new Transaction();
+		transaction.setRetailer(retailer);
+		transaction.setAmountSpent(transactionDTO.getAmountSpent());
+		transaction.setTransactionDate(transactionDTO.getTransactionDate());
+		transactionRepository.save(transaction);
+
+		return modelMapper.map(updatedRetailer, RetailerDTO.class);
+	}
 
 	@Override
 	public Integer getMonthlyRewardPoint(Integer retailerId) throws RetailerException {
-		
-		Retailer retailer = retailerRepository.findById(retailerId)
-                .orElseThrow(() -> new RetailerException("retailer.not.found"));
-		
-		LocalDate thisMonthdate = LocalDate.now();
-		LocalDate startFromDate = thisMonthdate.minusMonths(1);
-		
-		List<Transaction> transactions = transactionRepository.findByRetailerRetailerIdAndTransactionDateAfter(retailerId, startFromDate);
-		
-		int rewardPoint = transactions.stream()
-				.mapToInt(transation -> calculateRewardPoints(transation.getAmountSpent()))
+		if (retailerId == null || retailerId <= 0) {
+			throw new RetailerException("retailer.id.required");
+		}
+
+		retailerRepository.findById(retailerId).orElseThrow(() -> new RetailerException("retailer.not.found"));
+
+		LocalDate startFromDate = LocalDate.now().minusMonths(1);
+
+		List<Transaction> transactions = transactionRepository
+				.findByRetailerRetailerIdAndTransactionDateAfter(retailerId, startFromDate);
+
+		return transactions.stream().mapToInt(t -> rewardCalculatorService.calculateRewardPoints(t.getAmountSpent()))
 				.sum();
-		
-		return rewardPoint;
 	}
 
 	@Override
 	public Integer getTotalRewardPoint(Integer retailerId) throws RetailerException {
-		
+		if (retailerId == null || retailerId <= 0) {
+			throw new RetailerException("retailer.id.required");
+		}
+
 		Retailer retailer = retailerRepository.findById(retailerId)
-                .orElseThrow(() -> new RetailerException("retailer.not.found"));
+				.orElseThrow(() -> new RetailerException("retailer.not.found"));
+
 		return retailer.getRewardPoint();
 	}
 
 	@Override
 	public List<Map<String, Object>> getThreeMonthRewardSummary() throws RetailerException {
-	    
-	    Map<Integer, Map<String, Object>> retailerSummaryMap = new HashMap<>();
 
-	    Iterable<Transaction> transactions = transactionRepository.findAll();
-	    LocalDate now = LocalDate.now();
-	    LocalDate threeMonthsAgo = now.minusMonths(3);
+		final LocalDate now = LocalDate.now();
+		final LocalDate threeMonthsAgo = now.minusMonths(3);
 
-	    for (Transaction tran : transactions) {
-	        LocalDate txDate = tran.getTransactionDate();
+		final Iterable<Transaction> allTransactions = transactionRepository.findAll();
 
-	        // Only include transactions in the last 3 months
-	        if (!txDate.isBefore(threeMonthsAgo) && txDate.isBefore(now)) {
-	            int retailerId = tran.getRetailer().getRetailerId();
-	            String month = txDate.getMonth().toString();
-
-	            int points = calculateRewardPoints(tran.getAmountSpent());
-
-	    
-	            if (!retailerSummaryMap.containsKey(retailerId)) {
-	               
-	                Map<String, Object> newRetailerData = new LinkedHashMap<>();
-	                retailerSummaryMap.put(retailerId, newRetailerData);
-	            }
-
-	        
-	            Map<String, Object> retailerData = retailerSummaryMap.get(retailerId);
-
-	            if (!retailerData.containsKey("retailer")) {
-	                retailerData.put("retailer", tran.getRetailer());
-	            }
-
-
-	            List<Transaction> txList;
-	            if (retailerData.containsKey("transactions")) {
-	                txList = (List<Transaction>) retailerData.get("transactions");
-	            } else {
-	                txList = new ArrayList<>();
-	            }
-
-	            txList.add(tran);
-
-	            retailerData.put("transactions", txList);
-
-	            Map<String, Integer> monthlyPoints;
-	            if (retailerData.containsKey("monthlyPoints")) {
-
-	                monthlyPoints = (Map<String, Integer>) retailerData.get("monthlyPoints");
-	            } else {
 	
-	                monthlyPoints = new LinkedHashMap<>();
-	            }
+		final List<MonthlyRetailerData> mappedData = StreamSupport.stream(allTransactions.spliterator(), false).filter(
+				tran -> !tran.getTransactionDate().isBefore(threeMonthsAgo) && !tran.getTransactionDate().isAfter(now))
+				.map(tran -> new MonthlyRetailerData(
+						tran.getRetailer().getRetailerId(),
+						tran.getRetailer(),
+						YearMonth.from(tran.getTransactionDate()).toString(),
+						rewardCalculatorService.calculateRewardPoints(tran.getAmountSpent()), 
+						tran))
+				.collect(Collectors.toList());
 
-	            int existingPoints = monthlyPoints.getOrDefault(month, 0);
+		
+		return mappedData.stream()
+				.collect(
+						Collectors.groupingBy(MonthlyRetailerData::retailerId,
+						Collectors.collectingAndThen(
+								Collectors.toList(),
+								dataList -> {
+			
+					final Map<String, Integer> monthlyPoints = 
+							dataList.stream().
+							collect(Collectors.groupingBy(
+							MonthlyRetailerData::monthKey, 
+							Collectors.summingInt(MonthlyRetailerData::points)));
+					
+					final List<Transaction> transactions = 
+							dataList.stream().
+							map(MonthlyRetailerData::transaction)
+							.collect(Collectors.toList());
 
-	            monthlyPoints.put(month, existingPoints + points);
+					final Retailer retailer = dataList.get(0).retailer();
+					final int totalPoints = dataList.stream().
+											mapToInt(MonthlyRetailerData::points).sum();
 
-	            retailerData.put("monthlyPoints", monthlyPoints);
+					Map<String, Object> retailerData = new LinkedHashMap<>();
+					retailerData.put("retailer", retailer);
+					retailerData.put("transactions", transactions);
 
+					retailerData.put("monthlyPoints",
+							monthlyPoints.entrySet().stream()
+									.sorted(Map.Entry.comparingByKey())
+									.collect(Collectors.
+											toMap(Map.Entry::getKey, 
+												  Map.Entry::getValue, 
+												  (e1, e2) -> e1,
+											LinkedHashMap::new)));
 
-	            // Total points
-	            int totalPoints = (int) retailerData.getOrDefault("totalPoints", 0);
-	            retailerData.put("totalPoints", totalPoints + points);
-	        }
-	    }
+					retailerData.put("totalPoints", totalPoints);
 
-	    // Convert the map to a list
-	    return new ArrayList<>(retailerSummaryMap.values());
+					return retailerData;
+				}))
+			).values().stream().collect(Collectors.toList());
 	}
-
-    
-
 }

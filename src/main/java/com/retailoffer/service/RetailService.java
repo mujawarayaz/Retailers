@@ -8,10 +8,13 @@ import com.retailoffer.dto.TransactionDTO;
 import com.retailoffer.exception.RetailerException;
 
 public interface RetailService {
-	
-	RetailerDTO recordTransaction(TransactionDTO transactionDTO)throws RetailerException;
+
+	RetailerDTO recordTransaction(TransactionDTO transactionDTO) throws RetailerException;
+
 	Integer getMonthlyRewardPoint(Integer retailerId) throws RetailerException;
+
 	Integer getTotalRewardPoint(Integer retailerId) throws RetailerException;
+
 	List<Map<String, Object>> getThreeMonthRewardSummary() throws RetailerException;
 
 }
