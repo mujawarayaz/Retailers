@@ -36,7 +36,6 @@ The complete SQL script to create the required tables and seed initial data is l
 
 ```
 src/main/resources/TableScript.sql
-
 ```
 ## How to Run
 
@@ -109,11 +108,9 @@ http://localhost:8765/retail/rewards/customers/{customerId}
 1. Get Full 3-Month Summary (Default View) 
 ``` 
 http://localhost:8765/retail/rewards/customers/101
-
 ```
  Response (200 OK):
 ```
-
 {
     "customerId": 101,
     "customerName": "Ayaz Mujawar",
@@ -126,7 +123,6 @@ http://localhost:8765/retail/rewards/customers/101
 2. Get Total Points Only 
 ``` 
 http://localhost:8765/retail/rewards/customers/101?view=total
-
 ```
  Response (200 OK):
 ```
@@ -138,7 +134,6 @@ http://localhost:8765/retail/rewards/customers/101?view=total
 3. Get Last Month's Points Only
 ``` 
 http://localhost:8765/retail/rewards/customers/101?view=monthly
-
 ```
  Response (200 OK):
 ```
@@ -158,7 +153,6 @@ Validation and business rule errors return a 400 Bad Request status with a struc
     "errorMessage": "Customer not found with ID: 999",
     "errorCode": 400
 }
-
 ```
 
 
