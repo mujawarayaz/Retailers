@@ -9,14 +9,21 @@ import lombok.Data;
 @Data
 public class TransactionDTO {
 
-	@NotNull(message = "{retailer.id.required}")
-	private Integer retailerId;
+    private Integer transactionId;
 
-	@NotNull(message = "{transaction.amount.required}")
-	@Positive(message = "{amount.spent.invalid}")
-	private Double amountSpent;
+    @NotNull(message = "{retailer.id.required}")
+    private Integer retailerId;
 
-	@NotNull(message = "{transaction.date.required}")
-	private LocalDate transactionDate;
+    @NotNull(message = "{customer.id.required}")
+    private Integer customerId;
+
+    @NotNull(message = "{transaction.amount.required}")
+    @Positive(message = "{amount.spent.invalid}")
+    private Double amountSpent;
+
+    private Integer rewardPoint;
+
+    @NotNull(message = "{transaction.date.required}")
+    private LocalDate transactionDate;
 
 }

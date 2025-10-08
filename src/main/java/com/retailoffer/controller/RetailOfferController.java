@@ -1,8 +1,6 @@
 package com.retailoffer.controller;
 
-import java.util.List;
-import java.util.Map;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,7 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.retailoffer.dto.RetailerDTO;
+import com.retailoffer.dto.PointsDTO;
+import com.retailoffer.dto.RewardDetailsDTO;
 import com.retailoffer.dto.TransactionDTO;
 import com.retailoffer.exception.RetailerException;
 import com.retailoffer.service.RetailService;
@@ -27,41 +26,35 @@ import jakarta.validation.constraints.NotNull;
 @Validated
 public class RetailOfferController {
 
-	private final RetailService retailService;
+    private final RetailService retailService;
 
-	public RetailOfferController(RetailService retailService) {
-		this.retailService = retailService;
-	}
+    public RetailOfferController(RetailService retailService) {
+        this.retailService = retailService;
+    }
 
-	@PostMapping("/transaction")
-	public ResponseEntity<RetailerDTO> recordTransaction(@Valid @RequestBody TransactionDTO transactionDTO)
-			throws RetailerException {
+    @PostMapping("/transactions")
+    public ResponseEntity<TransactionDTO> recordTransaction(@Valid @RequestBody TransactionDTO transactionDTO) throws RetailerException {
+        TransactionDTO savedTransaction = retailService.recordTransaction(transactionDTO);
+        return new ResponseEntity<>(savedTransaction, HttpStatus.CREATED);
+    }
 
-		RetailerDTO updatedRetailer = retailService.recordTransaction(transactionDTO);
-		return ResponseEntity.ok(updatedRetailer);
-	}
+    @GetMapping("/rewards/customers/{customerId}")
+    public ResponseEntity<Object> getCustomerRewards(@PathVariable @NotNull @Min(1) Integer customerId, @RequestParam(name = "view", defaultValue = "summary") String viewType) throws RetailerException {
 
-	@GetMapping("/rewardPoints/{retailerId}")
-	public ResponseEntity<Integer> getRewardPoints(
-			@PathVariable @NotNull(message = "{retailer.id.required}") @Min(value = 1, message = "{retailer.id.required}") Integer retailerId,
-			@RequestParam(defaultValue = "total") String type) throws RetailerException {
+        switch (viewType.toLowerCase()) {
+            case "total":
+                Integer totalPoints = retailService.getTotalRewardPointsForCustomer(customerId);
+                PointsDTO totalPointsResponse = new PointsDTO(customerId, totalPoints);
+                return ResponseEntity.ok(totalPointsResponse);
 
-		Integer points;
+            case "monthly":
+                Integer monthlyPoints = retailService.getMonthlyRewardPointsForCustomer(customerId);
+                PointsDTO monthlyPointsResponse = new PointsDTO(customerId, monthlyPoints);
+                return ResponseEntity.ok(monthlyPointsResponse);
 
-		if ("monthly".equalsIgnoreCase(type)) {
-			points = retailService.getMonthlyRewardPoint(retailerId);
-		} else if ("total".equalsIgnoreCase(type)) {
-			points = retailService.getTotalRewardPoint(retailerId);
-		} else {
-			throw new IllegalArgumentException("Invalid reward type specified. Must be 'monthly' or 'total'.");
-		}
-
-		return ResponseEntity.ok(points);
-	}
-
-	@GetMapping("/summary")
-	public ResponseEntity<List<Map<String, Object>>> getThreeMonthSummary() throws RetailerException {
-		List<Map<String, Object>> summary = retailService.getThreeMonthRewardSummary();
-		return ResponseEntity.ok(summary);
-	}
+            default:
+                RewardDetailsDTO summary = retailService.getThreeMonthRewardSummary(customerId);
+                return ResponseEntity.ok(summary);
+        }
+    }
 }

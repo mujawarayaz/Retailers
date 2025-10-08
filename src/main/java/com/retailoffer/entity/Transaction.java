@@ -24,7 +24,13 @@ public class Transaction {
 	@JoinColumn(name = "retailer_id", nullable = false)
 	private Retailer retailer;
 
+    @ManyToOne 
+    @JoinColumn(name = "customer_id", nullable = false)
+    private Customer customer;
+
 	private Double amountSpent;
+
+	private Integer rewardPoint = 0;
 
 	private LocalDate transactionDate;
 }

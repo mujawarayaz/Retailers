@@ -9,6 +9,8 @@ import com.retailoffer.entity.Transaction;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Integer> {
 
-	List<Transaction> findByRetailerRetailerIdAndTransactionDateAfter(Integer retailerId, LocalDate startFromDate);
+	List<Transaction> findByCustomerCustomerIdAndTransactionDateAfter(Integer customerId, LocalDate lastMonth);
+
+	List<Transaction> findAllByCustomerCustomerId(Integer customerId);
 
 }

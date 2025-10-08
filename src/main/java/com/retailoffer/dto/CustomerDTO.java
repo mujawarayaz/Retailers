@@ -4,11 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-public class RetailerDTO {
+public class CustomerDTO {
+    private Integer customerId;
 
-    private Integer retailerId;
-
-    @NotBlank(message = "{retailer.name.notblank}")
+    @NotBlank(message = "{customer.name.notblank}")
     private String name;
-
 }

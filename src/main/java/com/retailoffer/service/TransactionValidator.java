@@ -12,11 +12,12 @@ public class TransactionValidator {
 		if (transactionDTO == null) {
 			throw new RetailerException("transaction.dto.null");
 		}
-
+		if (transactionDTO.getCustomerId() == null || transactionDTO.getCustomerId() <= 0) {
+			throw new RetailerException("customer.id.required");
+		}
 		if (transactionDTO.getRetailerId() == null || transactionDTO.getRetailerId() <= 0) {
 			throw new RetailerException("retailer.id.required");
 		}
-
 		if (transactionDTO.getAmountSpent() == null || transactionDTO.getAmountSpent() < 0) {
 			throw new RetailerException("transaction.amount.required");
 		}

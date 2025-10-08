@@ -1,20 +1,16 @@
 package com.retailoffer.service;
 
-import java.util.List;
-import java.util.Map;
-
-import com.retailoffer.dto.RetailerDTO;
+import com.retailoffer.dto.RewardDetailsDTO;
 import com.retailoffer.dto.TransactionDTO;
 import com.retailoffer.exception.RetailerException;
 
 public interface RetailService {
 
-	RetailerDTO recordTransaction(TransactionDTO transactionDTO) throws RetailerException;
+	TransactionDTO recordTransaction(TransactionDTO transactionDTO) throws RetailerException;
 
-	Integer getMonthlyRewardPoint(Integer retailerId) throws RetailerException;
+	Integer getMonthlyRewardPointsForCustomer(Integer customerId) throws RetailerException;
 
-	Integer getTotalRewardPoint(Integer retailerId) throws RetailerException;
+	Integer getTotalRewardPointsForCustomer(Integer customerId) throws RetailerException;
 
-	List<Map<String, Object>> getThreeMonthRewardSummary() throws RetailerException;
-
+	RewardDetailsDTO getThreeMonthRewardSummary(Integer customerId) throws RetailerException;
 }

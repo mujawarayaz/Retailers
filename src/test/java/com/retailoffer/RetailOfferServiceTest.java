@@ -2,17 +2,18 @@ package com.retailoffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,192 +21,154 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 
-import com.retailoffer.dto.RetailerDTO;
+import com.retailoffer.dto.RewardDetailsDTO;
 import com.retailoffer.dto.TransactionDTO;
+import com.retailoffer.entity.Customer;
 import com.retailoffer.entity.Retailer;
 import com.retailoffer.entity.Transaction;
 import com.retailoffer.exception.RetailerException;
+import com.retailoffer.repository.CustomerRepository;
 import com.retailoffer.repository.RetailerRepository;
 import com.retailoffer.repository.TransactionRepository;
 import com.retailoffer.service.RetailServiceImpl;
 import com.retailoffer.service.RewardCalculatorService;
+import com.retailoffer.service.RewardSummaryHelper;
 import com.retailoffer.service.TransactionValidator;
 
 @ExtendWith(MockitoExtension.class)
 public class RetailOfferServiceTest {
 
 	@Mock
+	private CustomerRepository customerRepository;
+	@Mock
 	private RetailerRepository retailerRepository;
 	@Mock
 	private TransactionRepository transactionRepository;
 	@Mock
+	private RewardCalculatorService rewardCalculatorService;
+	@Mock
+	private RewardSummaryHelper rewardSummaryHelper;
+	@Mock
 	private ModelMapper modelMapper;
-
 	@Mock
 	private TransactionValidator transactionValidator;
-	@Mock
-	private RewardCalculatorService rewardCalculatorService;
 
 	@InjectMocks
 	private RetailServiceImpl retailService;
 
-	private void mockRewardCalculation(Double inputAmount, Integer outputPoints) {
-		when(rewardCalculatorService.calculateRewardPoints(inputAmount)).thenReturn(outputPoints);
-	}
+	private Customer mockCustomer;
+	private TransactionDTO transactionDTO;
+	private List<Transaction> mockTransactionList;
 
-	@Test
-	void recordTransaction_RetailerNotFound_ThrowsRetailerException() {
-		int retailerId = 1;
-		TransactionDTO transactionDTO = new TransactionDTO();
-		transactionDTO.setRetailerId(retailerId);
-		transactionDTO.setAmountSpent(50.0);
+	@BeforeEach
+	void setUp() {
 
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.empty());
+		mockCustomer = new Customer();
+		mockCustomer.setCustomerId(101);
+		mockCustomer.setName("Ayaz Mujawar");
 
-		RetailerException exception = assertThrows(RetailerException.class, () -> {
-			retailService.recordTransaction(transactionDTO);
-		});
-
-		assertEquals("retailer.not.found", exception.getMessage());
-	}
-
-	@Test
-	void recordTransaction_ValidInput_ReturnsUpdatedRetailerDTO() throws RetailerException {
-		int retailerId = 1;
-		Retailer retailer = new Retailer();
-		retailer.setRetailerId(retailerId);
-		retailer.setRewardPoint(50);
-		RetailerDTO expectedDTO = new RetailerDTO();
-		expectedDTO.setRewardPoint(140);
-
-		TransactionDTO transactionDTO = new TransactionDTO();
-		transactionDTO.setRetailerId(retailerId);
+		transactionDTO = new TransactionDTO();
+		transactionDTO.setCustomerId(101);
+		transactionDTO.setRetailerId(101);
 		transactionDTO.setAmountSpent(120.0);
 
-		int earnedPoints = 90;
-		mockRewardCalculation(120.0, earnedPoints);
-
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.of(retailer));
-		when(retailerRepository.save(any(Retailer.class))).thenReturn(retailer);
-
-		when(modelMapper.map(any(Retailer.class), any())).thenReturn(expectedDTO);
-
-		RetailerDTO updatedRetailerDTO = retailService.recordTransaction(transactionDTO);
-
-		assertEquals(140, updatedRetailerDTO.getRewardPoint());
-		assertEquals(140, retailer.getRewardPoint());
-	}
-
-	@Test
-	void getMonthlyRewardPoint_ValidRetailer_ReturnsCorrectPoints() throws RetailerException {
-		int retailerId = 1;
-		LocalDate thisMonthdate = LocalDate.now();
-		LocalDate startFromDate = thisMonthdate.minusMonths(1);
-		Retailer retailer = new Retailer();
-		retailer.setRetailerId(retailerId);
-
-		Transaction transaction = new Transaction();
-		transaction.setRetailer(retailer);
-		transaction.setAmountSpent(120.0);
-		transaction.setTransactionDate(thisMonthdate);
-
-		List<Transaction> transactionList = Collections.singletonList(transaction);
-
-		mockRewardCalculation(120.0, 90);
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.of(retailer));
-		when(transactionRepository.findByRetailerRetailerIdAndTransactionDateAfter(any(Integer.class),
-				any(LocalDate.class))).thenReturn(transactionList);
-
-		Integer rewardPoint = retailService.getMonthlyRewardPoint(retailerId);
-
-		assertEquals(90, rewardPoint);
-	}
-
-	@Test
-	void getMonthlyRewardPoint_RetailerNotFound_ThrowsRetailerException() {
-		int retailerId = 1;
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.empty());
-
-		RetailerException exception = assertThrows(RetailerException.class, () -> {
-			retailService.getMonthlyRewardPoint(retailerId);
-		});
-
-		assertEquals("retailer.not.found", exception.getMessage());
-	}
-
-	@Test
-	void getTotalRewardPoint_ValidRetailer_ReturnsCorrectPoints() throws RetailerException {
-		int retailerId = 1;
-		Retailer retailer = new Retailer();
-		retailer.setRetailerId(retailerId);
-		retailer.setRewardPoint(50);
-
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.of(retailer));
-
-		Integer rewardPoint = retailService.getTotalRewardPoint(retailerId);
-
-		assertEquals(50, rewardPoint);
-	}
-
-	@Test
-	void getTotalRewardPoint_RetailerNotFound_ThrowsRetailerException() {
-		int retailerId = 1;
-
-		when(retailerRepository.findById(retailerId)).thenReturn(Optional.empty());
-
-		RetailerException exception = assertThrows(RetailerException.class, () -> {
-			retailService.getTotalRewardPoint(retailerId);
-		});
-
-		assertEquals("retailer.not.found", exception.getMessage());
-	}
-
-	@Test
-	void getThreeMonthRewardSummary_ValidTransactions_CalculatesCorrectTotal() throws RetailerException {
-
-		Retailer retailer = new Retailer();
-		retailer.setRetailerId(1);
-
 		Transaction t1 = new Transaction();
-		t1.setRetailer(retailer);
 		t1.setAmountSpent(120.0);
-		t1.setTransactionDate(LocalDate.now());
 		Transaction t2 = new Transaction();
-		t2.setRetailer(retailer);
 		t2.setAmountSpent(75.0);
-		t2.setTransactionDate(LocalDate.now().minusMonths(2).withDayOfMonth(15));
+		mockTransactionList = List.of(t1, t2);
+	}
 
-		List<Transaction> transactions = Arrays.asList(t1, t2);
+	@Test
+	void recordTransaction_Success_ShouldValidateAndSave() throws RetailerException {
+		when(customerRepository.findById(transactionDTO.getCustomerId())).thenReturn(Optional.of(mockCustomer));
+		when(retailerRepository.findById(transactionDTO.getRetailerId())).thenReturn(Optional.of(new Retailer()));
+		when(transactionRepository.save(any(Transaction.class))).thenReturn(new Transaction());
+		when(modelMapper.map(any(Transaction.class), eq(TransactionDTO.class))).thenReturn(transactionDTO);
 
-		when(transactionRepository.findAll()).thenReturn(transactions);
-		mockRewardCalculation(120.0, 90);
-		mockRewardCalculation(75.0, 25);
+		retailService.recordTransaction(transactionDTO);
 
-		List<Map<String, Object>> result = retailService.getThreeMonthRewardSummary();
+		verify(transactionValidator, times(1)).validate(transactionDTO);
+		verify(transactionRepository, times(1)).save(any(Transaction.class));
+	}
 
-		assertEquals(1, result.size());
+	@Test
+	void getMonthlyRewardPointsForCustomer_Success_ShouldReturnCorrectSum() throws RetailerException {
+		when(customerRepository.existsById(mockCustomer.getCustomerId())).thenReturn(true);
+		when(transactionRepository.findByCustomerCustomerIdAndTransactionDateAfter(eq(mockCustomer.getCustomerId()),
+				any(LocalDate.class))).thenReturn(mockTransactionList);
+		when(rewardCalculatorService.calculateRewardPoints(120.0)).thenReturn(90);
+		when(rewardCalculatorService.calculateRewardPoints(75.0)).thenReturn(25);
 
-		Map<String, Object> retailerData = result.get(0);
-		Integer totalPoints = (Integer) retailerData.get("totalPoints");
+		Integer points = retailService.getMonthlyRewardPointsForCustomer(mockCustomer.getCustomerId());
+
+		assertEquals(115, points);
+	}
+
+	@Test
+	void getTotalRewardPointsForCustomer_Success_ShouldReturnCorrectSum() throws RetailerException {
+		when(customerRepository.existsById(mockCustomer.getCustomerId())).thenReturn(true);
+		when(transactionRepository.findAllByCustomerCustomerId(mockCustomer.getCustomerId()))
+				.thenReturn(mockTransactionList);
+		when(rewardCalculatorService.calculateRewardPoints(120.0)).thenReturn(90);
+		when(rewardCalculatorService.calculateRewardPoints(75.0)).thenReturn(25);
+
+		Integer totalPoints = retailService.getTotalRewardPointsForCustomer(mockCustomer.getCustomerId());
 
 		assertEquals(115, totalPoints);
 	}
 
 	@Test
-	void getThreeMonthRewardSummary_OldTransaction_ReturnsEmptyList() throws RetailerException {
+	void getThreeMonthRewardSummary_Success_ShouldReturnCorrectDTO() throws RetailerException {
+		Map<String, Integer> monthlyPointsMap = Map.of("OCTOBER", 115);
+		int totalPoints = 115;
 
-		Retailer retailer = new Retailer();
-		retailer.setRetailerId(2);
+		when(customerRepository.findById(mockCustomer.getCustomerId())).thenReturn(Optional.of(mockCustomer));
+		when(transactionRepository.findByCustomerCustomerIdAndTransactionDateAfter(eq(mockCustomer.getCustomerId()),
+				any(LocalDate.class))).thenReturn(mockTransactionList);
+		when(rewardSummaryHelper.calculateMonthlyPoints(mockTransactionList)).thenReturn(monthlyPointsMap);
+		when(rewardSummaryHelper.calculateTotalPoints(monthlyPointsMap)).thenReturn(totalPoints);
 
-		Transaction oldTx = new Transaction();
-		oldTx.setRetailer(retailer);
-		oldTx.setAmountSpent(200.0);
-		oldTx.setTransactionDate(LocalDate.now().minusMonths(4).withDayOfMonth(1));
+		RewardDetailsDTO summary = retailService.getThreeMonthRewardSummary(mockCustomer.getCustomerId());
 
-		when(transactionRepository.findAll()).thenReturn(Collections.singletonList(oldTx));
+		assertEquals(mockCustomer.getCustomerId(), summary.getCustomerId());
+		assertEquals(mockCustomer.getName(), summary.getCustomerName());
+		assertEquals(totalPoints, summary.getTotalRewardPoints());
+	}
 
-		List<Map<String, Object>> result = retailService.getThreeMonthRewardSummary();
+	@Test
+	void recordTransaction_CustomerNotFound_ShouldThrowRetailerException() {
+		when(customerRepository.findById(transactionDTO.getCustomerId())).thenReturn(Optional.empty());
 
-		assertTrue(result.isEmpty());
+		assertThrows(RetailerException.class, () -> {
+			retailService.recordTransaction(transactionDTO);
+		});
+	}
+
+	@Test
+	void getMonthlyRewardPoints_CustomerNotFound_ShouldThrowRetailerException() {
+		when(customerRepository.existsById(mockCustomer.getCustomerId())).thenReturn(false);
+
+		assertThrows(RetailerException.class, () -> {
+			retailService.getMonthlyRewardPointsForCustomer(mockCustomer.getCustomerId());
+		});
+	}
+
+	@Test
+	void getTotalRewardPoints_CustomerNotFound_ShouldThrowRetailerException() {
+		when(customerRepository.existsById(mockCustomer.getCustomerId())).thenReturn(false);
+
+		assertThrows(RetailerException.class, () -> {
+			retailService.getTotalRewardPointsForCustomer(mockCustomer.getCustomerId());
+		});
+	}
+
+	@Test
+	void getThreeMonthRewardSummary_CustomerNotFound_ShouldThrowRetailerException() {
+		when(customerRepository.findById(mockCustomer.getCustomerId())).thenReturn(Optional.empty());
+
+		assertThrows(RetailerException.class, () -> {
+			retailService.getThreeMonthRewardSummary(mockCustomer.getCustomerId());
+		});
 	}
 }

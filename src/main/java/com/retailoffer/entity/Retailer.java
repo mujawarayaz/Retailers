@@ -18,6 +18,4 @@ public class Retailer {
 
 	private String name;
 
-	private Integer rewardPoint;
-
 }
