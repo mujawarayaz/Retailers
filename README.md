@@ -20,9 +20,9 @@ Points from the over-$100 tier: ($120 - $100) \* 2 = 40 points\
 Total Points: 90
 
 ## Prerequisites
-    Java 17+
-    Maven
-    A running MySQL instance
+   1) Java 17+
+   2) Maven
+   3) A running MySQL instance
 
 ## Database Configuration
 
@@ -61,10 +61,9 @@ http://localhost:8765/retail.
 
 This endpoint records a new transaction for a customer and a retailer. The response confirms the creation and includes the server-generated transactionId and the calculated rewardPoint.
 
-
-```http
-POST:  http://localhost:8765/retail/transactions
-
+##### POST:    
+```
+http://localhost:8765/retail/transactions
 ```
 
 | Parameter | Type     | Description                |
@@ -98,8 +97,9 @@ POST:  http://localhost:8765/retail/transactions
 
 This single endpoint retrieves reward information for a specific customer. An optional view parameter controls the level of detail in the response.
 
-```http
-  GET :  http://localhost:8765/retail/rewards/customers/{customerId}
+##### GET: 
+```
+http://localhost:8765/retail/rewards/customers/{customerId}
 ```
 
 | Parameter | Type     | Description                       |
